@@ -5,10 +5,9 @@ import requests
 import logging
 import pyperclip
 import base64
+import configparser
 
 logging.basicConfig(level=logging.INFO)
-
-openai.api_key = "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"
 
 def get_default_branch(repo_owner, repo_name, personal_access_token):
     url = f"https://api.github.com/repos/{repo_owner}/{repo_name}"
@@ -93,7 +92,19 @@ def ask_question(files, question, prompt, status_var, token):
     return answer
 
 
+def load_config():
+    config = configparser.ConfigParser()
+    if os.path.exists('config.ini'):
+        config.read('config.ini')
+        return config
+    else:
+        return None
 
+def save_config(api_key):
+    config = configparser.ConfigParser()
+    config['DEFAULT'] = {'api_key': api_key}
+    with open('config.ini', 'w') as configfile:
+        config.write(configfile)
 
 def generate_report():
     try:
@@ -102,6 +113,13 @@ def generate_report():
             messagebox.showerror(title='Error', message='Please enter a GitHub repository URL.')
             return
 
+        api_key = api_key_entry.get()
+        if not api_key:
+            messagebox.showerror(title='Error', message='Please enter your OpenAI API key.')
+            return
+        openai.api_key = api_key
+        save_config(api_key)  # Save the API key to the config file           
+                 
         repo_parts = repo_url.split("/")
         if len(repo_parts) < 5:
             messagebox.showerror(title='Error', message='Invalid GitHub repository URL.')
@@ -186,6 +204,15 @@ status_var = tk.StringVar()
 status_var.set('')
 status_label = tk.Label(tab1, textvariable=status_var)
 status_label.pack(pady=10)
+                 
+api_key_label = tk.Label(tab1, text='OpenAI API Key:')
+api_key_label.pack(pady=10)
+
+api_key_entry = tk.Entry(tab1, width=100, show='*')
+api_key_entry.pack()                 
 
 root.mainloop()
 
+config = load_config()
+if config:
+    api_key_entry.insert(0, config['DEFAULT']['api_key'])
