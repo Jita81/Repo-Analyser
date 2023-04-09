@@ -1,9 +1,11 @@
 # Repo-Analyser
 A basic analyser for github repos that allows you to question the whole repo.
 
-**This currently takes about ~7 minutes for an application i'm testing it against to run. **
+
 
 This is a simple document search application built using the Tkinter library in Python. The application uses the OpenAI GPT-3 language model to index a directory of documents and provides a search interface for querying the indexed documents.
+
+This is a framework for when I've access to the GTP-4 API. That will allow for much higher token limits, which should faciliatebetter answers and a more complete understanding of the code base. As it stands it works for very simple applications but longer ones enter truncation problems.
 
 Prerequisites
 This code requires the following Python modules to be installed:
