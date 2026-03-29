@@ -1,30 +1,72 @@
-# Repo-Analyser
-A basic analyser for github repos that allows you to question the whole repo.
+# Repo Analyser
 
+Analyse a repository and generate structured context documents for AI-assisted coding.
 
+Part of the Automated Agile framework.
 
-This is a simple document search application built using the Tkinter library in Python. The application uses the OpenAI GPT-3 language model to index a directory of documents and provides a search interface for querying the indexed documents.
+## What it does
 
-This is a framework for when I've access to the GTP-4 API. That will allow for much higher token limits, which should faciliatebetter answers and a more complete understanding of the code base. As it stands it works for very simple applications but longer ones enter truncation problems.
+Repo Analyser reads your codebase and produces five context documents that give AI coding agents (Claude Code, Cursor, Copilot, etc.) the institutional knowledge they need to code to your standard — not just generically.
 
-Prerequisites
-This code requires the following Python modules to be installed:
+Without context documents, agents produce code that works but degrades your codebase over time: wrong patterns, inconsistent conventions, missed architectural decisions.
 
-tkinter
-llama_index
-os
-You also need to have an OpenAI API key to use this application. Set the OPENAI_API_KEY environment variable to your API key.
+With context documents, agents understand what “good” looks like in your specific codebase.
 
-Usage
-To use the application, run the script in a Python environment. A GUI window will appear with the following options:
+## Output
 
-"Select Directory" button: Click this button to choose a directory to index.
-"Query" label and text entry: Enter a query term to search the indexed documents.
-"Search" button: Click this button to perform a search.
-"Results" text area: Displays the search results.
-Once you have selected a directory and performed a search, the application will index the documents and save the index to a file called "index.json" in the current working directory. The index is then loaded from the file and used to perform the search. The search results are displayed in the "Results" text area.
+Running `repo-analyser analyse` produces a `.context/` directory containing:
 
-Note: The first time you run the application, it may take some time to index the documents depending on the size of the directory.
+| Document | Contents |
+|----------|----------|
+| `AGENT_BRIEF.md` | Entry point. What the repo is, critical notes, index. Read this first. |
+| `ARCHITECTURE.md` | System structure, components, relationships (ISO 42010). |
+| `PATTERNS.md` | Concrete coding patterns with examples from your codebase. |
+| `STANDARDS.md` | Quality standards mapped to ISO 25010. |
+| `GAPS.md` | Known gaps and inconsistencies, with agent instructions. |
 
-License
-This code is released under the MIT License.
+## Installation
+
+From this repository:
+
+```bash
+pip install -e .
+```
+
+Or from PyPI (when published):
+
+```bash
+pip install repo-analyser
+```
+
+## Usage
+
+Set your Anthropic API key, then analyse a local repository:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+repo-analyser analyse --repo ./path/to/your/repo
+```
+
+Custom output directory:
+
+```bash
+repo-analyser analyse --repo ./path/to/your/repo --output ./docs/context
+```
+
+## How to use the output
+
+1. Run `repo-analyser analyse` on your repo.
+2. Commit the `.context/` directory (or add it to your agent’s context path).
+3. When starting an agentic coding session, instruct your agent to read `.context/AGENT_BRIEF.md` first.
+4. The agent will code to your codebase’s standard, not generic best practice.
+
+## Standards
+
+Context documents are aligned with:
+
+- **ISO 25010** — Software quality characteristics (maintainability, reliability, security, etc.).
+- **ISO 42010** — Architecture description (structural, behavioural, deployment views).
+
+## License
+
+MIT
