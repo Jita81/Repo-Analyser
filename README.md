@@ -121,6 +121,10 @@ Output: `<repo>/.context/` → `AGENT_BRIEF.md`, `ARCHITECTURE.md`, `PATTERNS.md
 
 Olympus provides the **Tuning Studio** (FastAPI + React in the Olympus monorepo) for prompt versioning, run logs, and isolation re-runs. Repo Analyser agents are plain YAML on disk until synced via `OLYMPUS_STUDIO=1` when using the Olympus API.
 
+## Specifications
+
+Product and hero build documents (PDF) are in [`docs/specifications/`](docs/specifications/). Implementation status vs those specs is tracked in [`docs/SPECIFICATION_COVERAGE.md`](docs/SPECIFICATION_COVERAGE.md).
+
 ## License
 
 MIT
