@@ -48,7 +48,11 @@ pip install "repo-analyser[athena]"
 
 ### Primary: context package (`package`)
 
-Runs the **full eight heroes + Athena** and writes **`CONTEXT_PACKAGE.md`** (default: `<repo>/.context/CONTEXT_PACKAGE.md`). Run log: `<repo>/.olympus/runs.sqlite`.
+Runs the **full eight heroes + Athena** and writes **`CONTEXT_PACKAGE.md`** (default: `<repo>/.context/CONTEXT_PACKAGE.md`). The file follows the **product outline** (executive summary, boundary, standing context with index + Iris + Pallas + gaps, change-specific, decomposition, testing contract, agent instructions) and **embeds full hero state** so the package is complete even if the orchestrator’s sections are brief.
+
+Run log: `<repo>/.olympus/runs.sqlite`.
+
+**Olympus runtime:** install **`olympus`** from the [Olympus-Agent-Framework](https://github.com/Jita81/Olympus-Agent-Framework) tree (editable install) so Daedalus/Nike/Tyche get **state-aware** tools: `read_explanation`, `get_module_map`, `get_pattern` read **current pipeline state** (and `.olympus/iris_explanations.json`). Nike’s **`get_standard`** / **`classify_change_type`** use an **applied standards knowledge base**. Asclepius **`write_gap`** merges into **`gap_register`** when the model returns an empty gap list.
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
