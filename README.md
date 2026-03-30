@@ -1,71 +1,107 @@
 # Repo Analyser
 
-Analyse a repository and generate structured context documents for AI-assisted coding.
+**Repo Analyser** is the first product on the **[Olympus](https://github.com/Jita81/Olympus-Agent-Framework) Agent Framework**: **Athena’s pipeline** — eight YAML-configured heroes plus an orchestrator — producing a **~45,000-token context package** from a **repository** and a **user story** with acceptance criteria (see *Repo Analyser Product Definition*, Automated Agile).
 
-Part of the Automated Agile framework.
+It is not a generic documentation generator: it is the automated equivalent of a senior **Context Engineer** briefing a coding agent before implementation.
 
-## What it does
+## Architecture (two layers)
 
-Repo Analyser reads your codebase and produces five context documents that give AI coding agents (Claude Code, Cursor, Copilot, etc.) the institutional knowledge they need to code to your standard — not just generically.
+| Layer | Heroes | Role |
+|-------|--------|------|
+| **Standing Knowledge** | Lethe → Iris → Pallas → Asclepius | Index + semantic explanations + patterns/conventions + gap register (rebuild when the repo changes). |
+| **Change-specific** | Daedalus → Nike → Tyche → Arete | Boundary + verbatim code + standards + decomposition + testing contracts (per user story). |
+| **Assembly** | Athena (orchestrator) | Merges state into one structured package; scores the result. |
 
-Without context documents, agents produce code that works but degrades your codebase over time: wrong patterns, inconsistent conventions, missed architectural decisions.
+Every hero is an Olympus agent: **YAML** (`role`, `system_prompt`, `tools`, `input_schema` / `output_schema`, `scoring`). The runtime handles Claude, tools, **typed feed-forward state** (`AthenaPipelineState`), logging, and retries.
 
-With context documents, agents understand what “good” looks like in your specific codebase.
+Bundled definitions live under `repo_analyser/pipelines/athena/`:
 
-## Output
-
-Running `repo-analyser analyse` produces a `.context/` directory containing:
-
-| Document | Contents |
-|----------|----------|
-| `AGENT_BRIEF.md` | Entry point. What the repo is, critical notes, index. Read this first. |
-| `ARCHITECTURE.md` | System structure, components, relationships (ISO 42010). |
-| `PATTERNS.md` | Concrete coding patterns with examples from your codebase. |
-| `STANDARDS.md` | Quality standards mapped to ISO 25010. |
-| `GAPS.md` | Known gaps and inconsistencies, with agent instructions. |
+- `athena-pipeline.yaml` — LangGraph graph  
+- `agents/*.yaml` — Lethe, Iris, Pallas, Asclepius, Daedalus, Nike, Tyche, Arete, Athena  
 
 ## Installation
 
-From this repository:
+**Python 3.11+**
 
 ```bash
 pip install -e .
 ```
 
-Or from PyPI (when published):
+### Full Athena pipeline (recommended)
+
+Requires the **`olympus`** package (LangGraph, Chroma, Lethe/Iris tools, etc.):
 
 ```bash
-pip install repo-analyser
+# If olympus is not yet on your index, install from the Olympus repo:
+pip install -e path/to/Olympus-Agent-Framework/packages/olympus
+
+pip install -e ".[athena]"
+```
+
+Or with extras in one line when `olympus` is published:
+
+```bash
+pip install "repo-analyser[athena]"
 ```
 
 ## Usage
 
-Set your Anthropic API key, then analyse a local repository:
+### Primary: context package (`package`)
+
+Runs the **full eight heroes + Athena** and writes **`CONTEXT_PACKAGE.md`** (default: `<repo>/.context/CONTEXT_PACKAGE.md`). Run log: `<repo>/.olympus/runs.sqlite`.
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
-repo-analyser analyse --repo ./path/to/your/repo
+
+repo-analyser package \
+  --repo ./path/to/repo \
+  --user-story "Add validation to the checkout API" \
+  --acceptance "Invalid payloads return 400" \
+  --acceptance "Valid payloads persist to the database"
 ```
 
-Custom output directory:
+Options:
+
+- `--output` — path to the Markdown file  
+- `--db` — SQLite run log path  
+- `--chroma-path` — Chroma persistence (default `<repo>/.olympus/chroma_lethe`)  
+- `--no-index` — skip index build (only if the index already exists)  
+- `--model` — Claude model id  
+
+Inspect runs with the Olympus CLI:
 
 ```bash
-repo-analyser analyse --repo ./path/to/your/repo --output ./docs/context
+olympus show-run <run_id> --db ./path/to/repo/.olympus/runs.sqlite
 ```
 
-## How to use the output
+Without `ANTHROPIC_API_KEY`, Olympus uses **deterministic mocks** (useful for smoke tests; not for real packages).
 
-1. Run `repo-analyser analyse` on your repo.
-2. Commit the `.context/` directory (or add it to your agent’s context path).
-3. When starting an agentic coding session, instruct your agent to read `.context/AGENT_BRIEF.md` first.
-4. The agent will code to your codebase’s standard, not generic best practice.
+### Legacy: five static context documents (`analyse`)
 
-## Standards
+Single-shot **ingestion → one Claude analysis → five Markdown files** (ISO 25010 / ISO 42010 shaped), no LangGraph:
 
-Context documents are aligned with:
+```bash
+repo-analyser analyse --repo ./path/to/repo
+```
 
-- **ISO 25010** — Software quality characteristics (maintainability, reliability, security, etc.).
-- **ISO 42010** — Architecture description (structural, behavioural, deployment views).
+Output: `<repo>/.context/` → `AGENT_BRIEF.md`, `ARCHITECTURE.md`, `PATTERNS.md`, `STANDARDS.md`, `GAPS.md`.
+
+## Product vs legacy
+
+| Path | Output | When to use |
+|------|--------|-------------|
+| **`package`** | Orchestrated sections (~45k token target), per-hero traceability in run log | Production Repo Analyser / Athena. |
+| **`analyse`** | Five fixed docs from one analysis call | Quick static snapshot without full pipeline. |
+
+## Standards (Nike / static path)
+
+- **ISO 25010** — quality characteristics  
+- **ISO 42010** — architectural views  
+- Nike’s prompt instructs **applied** standards (SOLID, OWASP, language norms) tied to **change type** and **this repo**, not generic quotes.
+
+## Tuning Studio
+
+Olympus provides the **Tuning Studio** (FastAPI + React in the Olympus monorepo) for prompt versioning, run logs, and isolation re-runs. Repo Analyser agents are plain YAML on disk until synced via `OLYMPUS_STUDIO=1` when using the Olympus API.
 
 ## License
 

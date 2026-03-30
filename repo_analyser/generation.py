@@ -12,7 +12,7 @@ Design decisions:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .models import AnalysisResult, ContextDocument, ContextDocumentSet
 
@@ -34,7 +34,7 @@ def generate(result: AnalysisResult) -> ContextDocumentSet:
     Returns:
         A ContextDocumentSet containing five documents, ready to write to disk.
     """
-    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     documents = [
         _generate_agent_brief(result, generated_at),
         _generate_architecture(result, generated_at),

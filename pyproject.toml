@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "repo-analyser"
 version = "0.1.0"
-description = "Analyse a repository and generate structured context documents for AI-assisted coding."
+description = "Athena context package generator on Olympus — eight YAML agents + optional five-document static analysis."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Repo Analyser contributors" }]
 keywords = ["ai", "claude", "documentation", "repository-analysis"]
@@ -17,7 +17,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -30,7 +29,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["ruff>=0.6"]
+# Full Athena pipeline (LangGraph + Chroma + Lethe/Iris tools). Install from PyPI when published
+# or: pip install -e ../Olympus-Agent-Framework/packages/olympus
+athena = [
+    "olympus>=0.4.0",
+]
+dev = [
+    "ruff>=0.6",
+    "pytest>=8.0",
+]
 
 [project.scripts]
 repo-analyser = "repo_analyser.cli:main"
@@ -39,9 +46,12 @@ repo-analyser = "repo_analyser.cli:main"
 where = ["."]
 include = ["repo_analyser*"]
 
+[tool.setuptools.package-data]
+repo_analyser = ["pipelines/athena/*.yaml", "pipelines/athena/agents/*.yaml"]
+
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
@@ -49,3 +59,6 @@ select = ["E", "F", "I", "UP"]
 [tool.ruff.lint.per-file-ignores]
 # Embedded JSON schema in ANALYSIS_PROMPT_TEMPLATE uses long single lines for the model.
 "repo_analyser/analysis.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

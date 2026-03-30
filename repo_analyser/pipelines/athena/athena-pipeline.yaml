@@ -1,0 +1,57 @@
+# Repo Analyser — Athena pipeline (Product Definition v4.0)
+# Runtime: Olympus LangGraph. State: AthenaPipelineState.
+# Layer 1 Standing Knowledge: Lethe → Iris → Pallas → Asclepius
+# Layer 2 Change-Specific: Daedalus → Nike → Tyche → Arete
+# Assembly: Athena orchestrator → context_package + package_score
+
+name: athena
+version: "1.0.0"
+description: >
+  Repo Analyser — eight YAML-configured heroes + orchestrator producing a
+  ~45k-token context package from a repository and user story (Automated Agile / Olympus).
+state_schema: AthenaPipelineState
+orchestrator: athena
+nodes:
+  - agent: lethe
+    id: standing_index
+  - agent: iris
+    id: standing_explanations
+  - agent: pallas
+    id: standing_patterns
+  - agent: asclepius
+    id: standing_gaps
+  - agent: daedalus
+    id: change_boundary
+  - agent: nike
+    id: change_standards
+  - agent: tyche
+    id: change_decomposition
+  - agent: arete
+    id: change_contracts
+  - agent: athena
+    id: assemble
+edges:
+  - from: standing_index
+    to: standing_explanations
+  - from: standing_explanations
+    to: standing_patterns
+  - from: standing_patterns
+    to: standing_gaps
+  - from: standing_gaps
+    to: change_boundary
+    condition: standing_knowledge_sufficient
+  - from: standing_gaps
+    to: standing_explanations
+    condition: standing_knowledge_insufficient
+  - from: change_boundary
+    to: change_standards
+  - from: change_standards
+    to: change_decomposition
+  - from: change_decomposition
+    to: change_contracts
+  - from: change_contracts
+    to: assemble
+retry:
+  on_score_below: 0.7
+  max_retries: 2
+  strategy: escalate_prompt

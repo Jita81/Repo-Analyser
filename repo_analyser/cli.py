@@ -1,14 +1,14 @@
 """
-CLI entry point for Repo Analyser.
+CLI entry point for Repo Analyser (Athena on Olympus).
 
 Usage:
-    repo-analyser analyse --repo ./path/to/repo
-    repo-analyser analyse --repo ./path/to/repo --output ./custom-output-dir
-    repo-analyser analyse --repo ./path/to/repo --api-key sk-ant-...
+    repo-analyser package --repo ./path/to/repo --user-story "..."
+    repo-analyser analyse --repo ./path/to/repo   # legacy five-document path
 """
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -25,8 +25,145 @@ console = Console()
 @click.group()
 @click.version_option(version="0.1.0", prog_name="repo-analyser")
 def main() -> None:
-    """Repo Analyser — generate structured context documents for AI-assisted coding."""
+    """Repo Analyser: Athena eight-hero package on Olympus; optional static .context docs."""
     pass
+
+
+@main.command("package")
+@click.option(
+    "--repo",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
+    help="Repository root to index and analyse.",
+)
+@click.option(
+    "--user-story",
+    required=True,
+    help="User story driving change-specific heroes (Daedalus → Arete).",
+)
+@click.option(
+    "--acceptance",
+    "acceptance_criteria",
+    multiple=True,
+    help="Acceptance criterion (repeat for multiple).",
+)
+@click.option(
+    "--output",
+    "output_md",
+    default=None,
+    type=click.Path(file_okay=True, dir_okay=False, path_type=Path),
+    help=(
+        "Write assembled context package Markdown "
+        "(default: <repo>/.context/CONTEXT_PACKAGE.md)."
+    ),
+)
+@click.option(
+    "--db",
+    "db_path",
+    default=None,
+    type=click.Path(file_okay=True, dir_okay=False, path_type=Path),
+    help="Olympus run log SQLite (default: <repo>/.olympus/runs.sqlite).",
+)
+@click.option(
+    "--chroma-path",
+    default=None,
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    help="Chroma persistence directory (default: <repo>/.olympus/chroma_lethe).",
+)
+@click.option(
+    "--embedding-model",
+    default="all-MiniLM-L6-v2",
+    help="sentence-transformers model for Lethe indexing.",
+)
+@click.option(
+    "--model",
+    default="claude-sonnet-4-20250514",
+    help="Claude model id for all heroes.",
+)
+@click.option(
+    "--no-index",
+    is_flag=True,
+    help="Skip Chroma build (tools need an existing index in chroma-path).",
+)
+def package_cmd(
+    repo: Path,
+    user_story: str,
+    acceptance_criteria: tuple[str, ...],
+    output_md: Path | None,
+    db_path: Path | None,
+    chroma_path: Path | None,
+    embedding_model: str,
+    model: str,
+    no_index: bool,
+) -> None:
+    """
+    Run the full Athena pipeline on Olympus (Lethe → … → Arete → Athena).
+
+    Requires ``pip install 'repo-analyser[athena]'`` and a resolvable ``olympus`` package
+    (PyPI or editable install from Olympus-Agent-Framework). Set ANTHROPIC_API_KEY for
+    live Claude; without it, Olympus uses deterministic mocks for CI/local smoke tests.
+    """
+    from .pipeline_runner import run_athena_context_package, write_context_package_markdown
+
+    repo = repo.resolve()
+    ac = (
+        list(acceptance_criteria)
+        if acceptance_criteria
+        else ["Implementation meets the user story."]
+    )
+    db = db_path or (repo / ".olympus" / "runs.sqlite")
+    chroma = chroma_path or (repo / ".olympus" / "chroma_lethe")
+    out = output_md or (repo / ".context" / "CONTEXT_PACKAGE.md")
+
+    console.print(
+        f"\n[bold]Repo Analyser[/bold] — [cyan]Athena package[/cyan] on Olympus\n"
+        f"  Repo: {repo}\n"
+    )
+
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            progress.add_task(
+                "Running Athena pipeline (eight heroes + orchestrator)...",
+                total=None,
+            )
+            final, run_id = run_athena_context_package(
+                repo_path=repo,
+                user_story=user_story,
+                acceptance_criteria=ac,
+                model=model,
+                db_path=db,
+                chroma_path=chroma,
+                embedding_model=embedding_model,
+                index_repo=not no_index,
+            )
+    except RuntimeError as e:
+        console.print(f"[red]{e}[/red]")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]Pipeline error:[/red] {e}")
+        sys.exit(1)
+
+    path = write_context_package_markdown(final, out)
+    console.print(f"  ✓ [green]run_id[/green] {run_id}")
+    console.print(f"  ✓ [green]Wrote[/green] {path}\n")
+    dump = {
+        "run_id": run_id,
+        "package_score": (
+            final.package_score.model_dump() if getattr(final, "package_score", None) else None
+        ),
+        "context_package_title": (
+            final.context_package.title if getattr(final, "context_package", None) else None
+        ),
+    }
+    console.print(json.dumps(dump, indent=2))
+    console.print(
+        f"\n[dim]Run log:[/dim] {db}  — use [cyan]olympus show-run {run_id} --db {db}[/cyan]\n"
+    )
 
 
 @main.command()

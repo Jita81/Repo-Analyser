@@ -8,6 +8,7 @@ build/
 venv/
 .env
 .context/
+.olympus/
 *.ini
 
 # Local sibling checkout (separate repository; Athena / Olympus framework)
