@@ -9,3 +9,6 @@ venv/
 .env
 .context/
 *.ini
+
+# Local sibling checkout (separate repository; Athena / Olympus framework)
+Olympus-Agent-Framework/
