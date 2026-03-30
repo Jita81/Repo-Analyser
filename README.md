@@ -80,6 +80,20 @@ olympus show-run <run_id> --db ./path/to/repo/.olympus/runs.sqlite
 
 Without `ANTHROPIC_API_KEY`, Olympus uses **deterministic mocks** (useful for smoke tests; not for real packages).
 
+### Self-hosted models (Ollama / OpenAI-compatible)
+
+Olympus can drive the same YAML agents via a **local** `/v1/chat/completions` server (e.g. [Ollama](https://ollama.com)):
+
+```bash
+export OLYMPUS_OPENAI_COMPATIBLE=1
+export OPENAI_BASE_URL=http://127.0.0.1:11434/v1
+export OLYMPUS_MODEL=llama3.2   # or another instruct-capable model
+# Leave ANTHROPIC_API_KEY unset so this path is used
+repo-analyser package --repo . --user-story "..." --acceptance "..."
+```
+
+Use a model strong enough to emit **valid JSON** for each hero’s `output_schema`. Lethe’s **`read_file`** / **`get_git_history`** work from **`repo_path`** in state; **`search_index`** still needs indexing (`--index-repo` / default) for Chroma.
+
 ### Legacy: five static context documents (`analyse`)
 
 Single-shot **ingestion → one Claude analysis → five Markdown files** (ISO 25010 / ISO 42010 shaped), no LangGraph:
