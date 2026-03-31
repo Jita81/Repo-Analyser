@@ -23,7 +23,7 @@ console = Console()
 
 
 @click.group()
-@click.version_option(version="0.1.0", prog_name="repo-analyser")
+@click.version_option(version="0.2.0", prog_name="repo-analyser")
 def main() -> None:
     """Repo Analyser: Athena eight-hero package on Olympus; optional static .context docs."""
     pass

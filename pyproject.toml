@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "repo-analyser"
-version = "0.1.0"
+version = "0.2.0"
 description = "Athena context package generator on Olympus — eight YAML agents + optional five-document static analysis."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -31,6 +31,7 @@ dependencies = [
 [project.optional-dependencies]
 # Full Athena pipeline (LangGraph + Chroma + Lethe/Iris tools). Install from PyPI when published
 # or: pip install -e ../Olympus-Agent-Framework/packages/olympus
+# Install olympus from source (Jita81/Olympus-Agent-Framework packages/olympus) for v0.6+ features.
 athena = [
     "olympus>=0.4.0",
 ]

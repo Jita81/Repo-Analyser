@@ -1,130 +1,155 @@
 # Repo Analyser
 
-**Repo Analyser** is the first product on the **[Olympus](https://github.com/Jita81/Olympus-Agent-Framework) Agent Framework**: **Athena’s pipeline** — eight YAML-configured heroes plus an orchestrator — producing a **~45,000-token context package** from a **repository** and a **user story** with acceptance criteria (see *Repo Analyser Product Definition*, Automated Agile).
+**Repo Analyser** is [Athena](https://github.com/Jita81/Olympus-Agent-Framework)’s pipeline as a product: **eight YAML agents + an orchestrator** on the **Olympus** runtime, turning a **repository** and a **user story** (with acceptance criteria) into a **structured context package** for coding agents.
 
-It is not a generic documentation generator: it is the automated equivalent of a senior **Context Engineer** briefing a coding agent before implementation.
+It is the Automated Agile idea of a **Context Engineer** in a box — not a generic doc generator.
 
-## Architecture (two layers)
+---
+
+## Where this repo is today (March 2026)
+
+This branch is a **working integration** of:
+
+| Area | Status |
+|------|--------|
+| **Bundled pipeline** | `repo_analyser/pipelines/athena/` — `athena-pipeline.yaml` + agent YAML for Lethe → … → Athena. |
+| **Primary CLI** | `repo-analyser package` — runs Olympus `run_pipeline`, optional Chroma index, writes `CONTEXT_PACKAGE.md` + SQLite run log. |
+| **Legacy CLI** | `repo-analyser analyse` — single Claude pass → five Markdown files in `.context/` (no LangGraph). |
+| **Specifications** | PDFs in [`docs/specifications/`](docs/specifications/); traceability in [`docs/SPECIFICATION_COVERAGE.md`](docs/SPECIFICATION_COVERAGE.md). |
+| **Olympus framework** | Full hero schemas, Lethe `olympus_lethe` + `lethe_merkle.json`, Pallas persistence tools, Nike ISO matrix, etc. live in **[Olympus-Agent-Framework](https://github.com/Jita81/Olympus-Agent-Framework)** (`cursor/iris-standing-knowledge` / **v0.6.0**). **Install Olympus from that repo** until `olympus` is published at ≥0.6. |
+
+**Not included as a one-click “cloud deploy” here:** hosted API, Docker image, or PyPI publish automation — you deploy by **installing Python packages** and running the CLI (see below). **Tuning Studio** ships with Olympus; wire it separately if you want a web UI.
+
+---
+
+## Architecture
 
 | Layer | Heroes | Role |
 |-------|--------|------|
-| **Standing Knowledge** | Lethe → Iris → Pallas → Asclepius | Index + semantic explanations + patterns/conventions + gap register (rebuild when the repo changes). |
-| **Change-specific** | Daedalus → Nike → Tyche → Arete | Boundary + verbatim code + standards + decomposition + testing contracts (per user story). |
-| **Assembly** | Athena (orchestrator) | Merges state into one structured package; scores the result. |
+| **Standing knowledge** | Lethe → Iris → Pallas → Asclepius | Vector index, Iris explanations, `CodebaseKnowledge`, gap register. |
+| **Change-specific** | Daedalus → Nike → Tyche → Arete | Boundary, retrieved snippets, standards + testing templates, decomposition, contracts. |
+| **Assembly** | Athena | Merges `ContextPackage` + `PackageScore`. |
 
-Every hero is an Olympus agent: **YAML** (`role`, `system_prompt`, `tools`, `input_schema` / `output_schema`, `scoring`). The runtime handles Claude, tools, **typed feed-forward state** (`AthenaPipelineState`), logging, and retries.
+Runtime: **LangGraph**, **typed `AthenaPipelineState`**, tool loop, **SQLite** run store (`olympus show-run`).
 
-Bundled definitions live under `repo_analyser/pipelines/athena/`:
+---
 
-- `athena-pipeline.yaml` — LangGraph graph  
-- `agents/*.yaml` — Lethe, Iris, Pallas, Asclepius, Daedalus, Nike, Tyche, Arete, Athena  
+## Deploy / run locally
 
-## Installation
+### Prerequisites
 
-**Python 3.11+**
+- **Python 3.11+**
+- **Anthropic API key** *or* a local **OpenAI-compatible** server ([Ollama](https://ollama.com), etc.) via Olympus env vars
+- **Olympus ≥ 0.6.0** (from source until PyPI catches up)
 
-```bash
-pip install -e .
-```
-
-### Full Athena pipeline (recommended)
-
-Requires the **`olympus`** package (LangGraph, Chroma, Lethe/Iris tools, etc.):
+### 1. Install Olympus (required for `package`)
 
 ```bash
-# If olympus is not yet on your index, install from the Olympus repo:
-pip install -e path/to/Olympus-Agent-Framework/packages/olympus
-
-pip install -e ".[athena]"
+git clone https://github.com/Jita81/Olympus-Agent-Framework.git
+cd Olympus-Agent-Framework/packages/olympus
+# Use branch with v0.6.0 spec alignment if `main` lags:
+# git checkout cursor/iris-standing-knowledge
+pip install -e ".[dev]"
 ```
 
-Or with extras in one line when `olympus` is published:
+### 2. Install Repo Analyser
 
 ```bash
-pip install "repo-analyser[athena]"
+cd /path/to/Repo-Analyser
+pip install -e ".[dev]"
+# Optional: pip install -e ".[athena]" after olympus is on PyPI with matching version
 ```
 
-## Usage
-
-### Primary: context package (`package`)
-
-Runs the **full eight heroes + Athena** and writes **`CONTEXT_PACKAGE.md`** (default: `<repo>/.context/CONTEXT_PACKAGE.md`). The file follows the **product outline** (executive summary, boundary, standing context with index + Iris + Pallas + gaps, change-specific, decomposition, testing contract, agent instructions) and **embeds full hero state** so the package is complete even if the orchestrator’s sections are brief.
-
-Run log: `<repo>/.olympus/runs.sqlite`.
-
-**Olympus runtime:** install **`olympus`** from the [Olympus-Agent-Framework](https://github.com/Jita81/Olympus-Agent-Framework) tree (editable install) so Daedalus/Nike/Tyche get **state-aware** tools: `read_explanation`, `get_module_map`, `get_pattern` read **current pipeline state** (and `.olympus/iris_explanations.json`). Nike’s **`get_standard`** / **`classify_change_type`** use an **applied standards knowledge base**. Asclepius **`write_gap`** merges into **`gap_register`** when the model returns an empty gap list.
+### 3. Run the context package
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
 
 repo-analyser package \
-  --repo ./path/to/repo \
+  --repo /path/to/target/repo \
   --user-story "Add validation to the checkout API" \
-  --acceptance "Invalid payloads return 400" \
-  --acceptance "Valid payloads persist to the database"
+  --acceptance "Invalid payloads return 400"
 ```
 
-Options:
+**Outputs**
 
-- `--output` — path to the Markdown file  
-- `--db` — SQLite run log path  
-- `--chroma-path` — Chroma persistence (default `<repo>/.olympus/chroma_lethe`)  
-- `--no-index` — skip index build (only if the index already exists)  
-- `--model` — Claude model id  
-
-Inspect runs with the Olympus CLI:
+| Artifact | Location |
+|----------|----------|
+| Context package (Markdown) | `<repo>/.context/CONTEXT_PACKAGE.md` (override with `--output`) |
+| Run log (SQLite) | `<repo>/.olympus/runs.sqlite` (override with `--db`) |
+| Chroma index | `<repo>/.olympus/chroma_lethe` (override with `--chroma-path`) |
+| Lethe file hashes | `<repo>/.olympus/lethe_merkle.json` |
+| Iris explanations (JSON) | `<repo>/.olympus/iris_explanations.json` |
+| Pallas knowledge (JSON) | `<repo>/.olympus/pallas_knowledge.json` (when agent persists) |
 
 ```bash
-olympus show-run <run_id> --db ./path/to/repo/.olympus/runs.sqlite
+olympus show-run <run_id> --db /path/to/target/repo/.olympus/runs.sqlite
 ```
 
-Without `ANTHROPIC_API_KEY`, Olympus uses **deterministic mocks** (useful for smoke tests; not for real packages).
-
-### Self-hosted models (Ollama / OpenAI-compatible)
-
-Olympus can drive the same YAML agents via a **local** `/v1/chat/completions` server (e.g. [Ollama](https://ollama.com)):
+### Self-hosted LLM (no Anthropic)
 
 ```bash
+ollama serve
+ollama pull llama3.2
+
 export OLYMPUS_OPENAI_COMPATIBLE=1
 export OPENAI_BASE_URL=http://127.0.0.1:11434/v1
-export OLYMPUS_MODEL=llama3.2   # or another instruct-capable model
-# Leave ANTHROPIC_API_KEY unset so this path is used
+export OLYMPUS_MODEL=llama3.2
+# Do not set ANTHROPIC_API_KEY
+
 repo-analyser package --repo . --user-story "..." --acceptance "..."
 ```
 
-Use a model strong enough to emit **valid JSON** for each hero’s `output_schema`. Lethe’s **`read_file`** / **`get_git_history`** work from **`repo_path`** in state; **`search_index`** still needs indexing (`--index-repo` / default) for Chroma.
+Use an **instruct** model that can emit **valid JSON** per hero; small models often fail on large schemas.
 
-### Legacy: five static context documents (`analyse`)
+### Legacy: five-document path
 
-Single-shot **ingestion → one Claude analysis → five Markdown files** (ISO 25010 / ISO 42010 shaped), no LangGraph:
+No Olympus required for this command only (still needs `ANTHROPIC_API_KEY` for real analysis):
 
 ```bash
 repo-analyser analyse --repo ./path/to/repo
 ```
 
-Output: `<repo>/.context/` → `AGENT_BRIEF.md`, `ARCHITECTURE.md`, `PATTERNS.md`, `STANDARDS.md`, `GAPS.md`.
+→ `AGENT_BRIEF.md`, `ARCHITECTURE.md`, `PATTERNS.md`, `STANDARDS.md`, `GAPS.md` under `.context/`.
 
-## Product vs legacy
+---
 
-| Path | Output | When to use |
-|------|--------|-------------|
-| **`package`** | Orchestrated sections (~45k token target), per-hero traceability in run log | Production Repo Analyser / Athena. |
-| **`analyse`** | Five fixed docs from one analysis call | Quick static snapshot without full pipeline. |
+## CI (this repository)
 
-## Standards (Nike / static path)
+On push/PR, GitHub Actions runs **Ruff** and **pytest** on the bundled package (see `.github/workflows/ci.yml`). Full Athena integration tests run in the **Olympus** repo.
 
-- **ISO 25010** — quality characteristics  
-- **ISO 42010** — architectural views  
-- Nike’s prompt instructs **applied** standards (SOLID, OWASP, language norms) tied to **change type** and **this repo**, not generic quotes.
+---
 
-## Tuning Studio
+## Project layout
 
-Olympus provides the **Tuning Studio** (FastAPI + React in the Olympus monorepo) for prompt versioning, run logs, and isolation re-runs. Repo Analyser agents are plain YAML on disk until synced via `OLYMPUS_STUDIO=1` when using the Olympus API.
+```
+repo_analyser/
+  cli.py                 # package + analyse
+  pipeline_runner.py     # invokes Olympus + writes CONTEXT_PACKAGE.md
+  pipelines/athena/      # shipped YAML graph + agents
+  analysis.py …         # legacy five-doc pipeline
+docs/
+  specifications/        # product + hero PDFs
+  SPECIFICATION_COVERAGE.md
+```
 
-## Specifications
+---
 
-Product and hero build documents (PDF) are in [`docs/specifications/`](docs/specifications/). Implementation status vs those specs is tracked in [`docs/SPECIFICATION_COVERAGE.md`](docs/SPECIFICATION_COVERAGE.md).
+## Standards & specs
+
+- **ISO 25010 / ISO 42010** — wired through Nike and the static `analyse` path.
+- **PDF index** — [`docs/specifications/`](docs/specifications/)
+- **Implementation matrix** — [`docs/SPECIFICATION_COVERAGE.md`](docs/SPECIFICATION_COVERAGE.md)
+
+---
 
 ## License
 
 MIT
+
+---
+
+## Links
+
+- [Olympus Agent Framework](https://github.com/Jita81/Olympus-Agent-Framework)  
+- [Automated Agile](https://automatedagile.co.uk) (framework context)
