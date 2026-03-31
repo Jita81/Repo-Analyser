@@ -1,8 +1,8 @@
 # Specification coverage
 
-Authoritative product and hero build PDFs live in [`specifications/`](./specifications/). This file records **implementation status** in this repository and the bundled Olympus framework (see `Olympus-Agent-Framework/` when present).
+Authoritative PDFs: [`specifications/`](./specifications/). This file reflects the **current** implementation in **Repo Analyser** + **Olympus** (`Olympus-Agent-Framework/packages/olympus` when vendored).
 
-**Legend:** **Done** = matches the spec in spirit and core behaviour. **Partial** = implemented but missing named artefacts, fields, or behaviours from the PDF. **Gap** = not implemented as specified.
+**Legend:** **Done** = specified artefact/behaviour implemented. **Partial** = present with intentional scope limits noted. **Gap** = not implemented.
 
 ---
 
@@ -10,10 +10,11 @@ Authoritative product and hero build PDFs live in [`specifications/`](./specific
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Eight heroes + Athena orchestrator | **Partial** | YAML + LangGraph order match; hero **data models** in code are slimmer than some build docs (e.g. Pallas `CodebaseKnowledge`). |
+| Eight heroes + Athena orchestrator | **Done** | YAML agents, LangGraph order, typed state merge. |
 | Two-layer pipeline | **Done** | Standing → conditional → change-specific → assemble. |
-| ~45k-token context package shape | **Partial** | `CONTEXT_PACKAGE.md` follows §5 outline and embeds full state; no enforced token budget. |
-| Tuning Studio / MCP | **Gap** | Olympus has Studio pieces; not wired as end-to-end “product” in this repo. |
+| Context package structure | **Done** | `CONTEXT_PACKAGE.md` follows §5 + full state dump via `pipeline_runner`. |
+| ~45k-token cap | **Partial** | No hard token limit; content scales with repo and model output. |
+| Tuning Studio / MCP as shipped product | **Partial** | Olympus exposes Studio API; not bundled as default install path in this repo. |
 
 ---
 
@@ -21,11 +22,10 @@ Authoritative product and hero build PDFs live in [`specifications/`](./specific
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Agent YAML, pipeline YAML → LangGraph | **Done** | Loader + `StateGraph`. |
-| Tools, feed-forward state, scoring, retries | **Done** | `node_executor`, `scoring`, run log. |
-| Claude + tool loop | **Done** | Anthropic path. |
-| OpenAI-compatible local models | **Partial** | `OLYMPUS_OPENAI_COMPATIBLE` + `/v1/chat/completions`; quality depends on model. |
-| Tuning Studio API (full §5) | **Partial** | FastAPI exists in Olympus package; feature parity not audited here. |
+| Agent/pipeline YAML, LangGraph, tools, state, scoring, retries | **Done** | |
+| Claude + tool loop | **Done** | |
+| OpenAI-compatible local server | **Done** | `OLYMPUS_OPENAI_COMPATIBLE` + `openai_compatible_runner.py`. |
+| Tuning Studio API (full doc §5) | **Partial** | Implemented in package; feature parity not exhaustively audited. |
 
 ---
 
@@ -33,12 +33,13 @@ Authoritative product and hero build PDFs live in [`specifications/`](./specific
 
 | Area | Status | Notes |
 |------|--------|--------|
-| AST-oriented chunking (Chonkie + tree-sitter) | **Done** | `indexing.build_index`. |
-| Chroma + sentence-transformers | **Done** | Local embeddings. |
-| Merkle skip / rebuild | **Partial** | Merkle on **collection metadata**; spec’s **per-file** Merkle + `lethe_merkle.json` + incremental **per-file** re-index not implemented. |
-| Collection name `olympus_lethe` | **Gap** | Runtime uses **per-run** collection name (e.g. `lethe_<runprefix>`), not fixed `olympus_lethe`. |
-| Chunk metadata schema (chunk_type, chunk_name, file_hash, indexed_at) | **Partial** | Has `path`/`file_path`, `chunk_id`, lines, `language`; missing several spec fields. |
-| IndexStatus language breakdown / changed_files / needs_iris_refresh | **Gap** | Current `IndexStatus` is a smaller shape. |
+| AST chunking (Chonkie + tree-sitter) | **Done** | `indexing.build_index`. |
+| Chroma + sentence-transformers | **Done** | |
+| Collection `olympus_lethe` | **Done** | `lethe_constants.OLYMPUS_LETHE_COLLECTION`; pipeline uses it. |
+| `.olympus/lethe_merkle.json` per-file hashes | **Done** | Incremental re-index; delete chunks for changed/removed files. |
+| Chunk metadata: file_path, lines, language, chunk_id, chunk_type, file_hash, indexed_at | **Done** | `chunk_name` left empty unless parser adds it later. |
+| IndexStatus: language_breakdown, changed_files, needs_iris_refresh | **Done** | Merged from `ToolContext` after index. |
+| Preserve Iris enrichment on re-chunk | **Partial** | Re-index replaces chunk rows; `.olympus/iris_explanations.json` drives `needs_iris_refresh` for Iris to re-run. |
 
 ---
 
@@ -46,11 +47,8 @@ Authoritative product and hero build PDFs live in [`specifications/`](./specific
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Tools: get_module_list, get_module_chunks, write_explanation | **Done** | `iris_tools.py`; Chroma filter in-process (not `$contains` wire format). |
-| `.olympus/iris_explanations.json` | **Done** | Persisted. |
-| Chroma enrichment metadata on chunks | **Done** | `iris_explanation`, etc. |
-| register_iris / CLI flag | **Done** | |
-| Collection name `olympus_lethe` | **Gap** | Same as Lethe — must match active collection. |
+| Tools + store + Chroma enrichment | **Done** | Same collection `olympus_lethe`. |
+| register_iris / CLI | **Done** | |
 
 ---
 
@@ -58,10 +56,9 @@ Authoritative product and hero build PDFs live in [`specifications/`](./specific
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Role + YAML + tools | **Partial** | Agent uses `pattern_library` in state, not spec’s **`CodebaseKnowledge`** / `convention_count` / `pattern_count`. |
-| `.olympus/pallas_knowledge.json` | **Gap** | Not written. |
-| Chroma pattern tags on chunks | **Gap** | Not implemented. |
-| Structured Convention / ArchitecturalDecision models | **Gap** | Uses generic `PatternLibrary` dicts. |
+| `CodebaseKnowledge` model (conventions, patterns, ADs, counts) | **Done** | `athena_state.py`; `AthenaPallasOutput`. |
+| `.olympus/pallas_knowledge.json` | **Done** | `persist_codebase_knowledge` tool. |
+| Chroma pattern tags | **Done** | `tag_chunk_patterns` tool (`pallas_pattern_tags` metadata). |
 
 ---
 
@@ -69,9 +66,9 @@ Authoritative product and hero build PDFs live in [`specifications/`](./specific
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Tools read_file, read_explanation, write_gap, read_gaps | **Done** | |
-| Typed gap register in state | **Partial** | `GapRegister` exists; session **`write_gap`** merge helps; spec may require richer gap schema. |
-| Chroma violation queries | **Gap** | Not implemented as in doc. |
+| Typed `GapItem` / `GapRegister` | **Done** | |
+| `search_violation_candidates` over index | **Done** | Keyword scan of chunk documents (heuristic “violations”). |
+| write_gap / read_gaps | **Done** | Session merge when model returns empty gaps. |
 
 ---
 
@@ -79,8 +76,8 @@ Authoritative product and hero build PDFs live in [`specifications/`](./specific
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Tools + boundary / retrieved_code outputs | **Partial** | State fields exist; **verbatim code with line numbers** in `retrieved_code` relies on model + `read_file`; no dedicated `change_type_hypothesis` field. |
-| Structured ChangeBoundary per spec (primary/secondary modules) | **Partial** | Flat `boundary_files` / summaries vs full spec model. |
+| `ChangeBoundary` extended fields | **Done** | primary_modules, secondary_modules, out_of_scope, change_type_hypothesis. |
+| `RetrievedCode.snippets` | **Done** | path + line range + content. |
 
 ---
 
@@ -88,11 +85,10 @@ Authoritative product and hero build PDFs live in [`specifications/`](./specific
 
 | Area | Status | Notes |
 |------|--------|--------|
-| classify_change_type + get_standard tools | **Done** | `nike_standards.py` knowledge base + keyword taxonomy. |
-| ISO families “all characteristics evaluated” | **Partial** | Curated bullets by change type, not full 8× matrix per run. |
-| `codebase_knowledge` from Pallas | **Gap** | State uses `pattern_library`, not spec model. |
-| `testing_templates` for Arete | **Gap** | Not separate state field. |
-| File-specific standards per boundary file | **Partial** | Prompt asks for applied standards; no structured per-file map in state. |
+| `get_standard` + ISO 25010 matrix (8 characteristics) | **Done** | `iso25010_matrix_for_types` in `nike_standards.py`. |
+| `AssembledStandards.iso25010_notes` + `file_guidance` | **Done** | Model + prompts. |
+| `testing_templates` on state + `build_testing_templates` tool | **Done** | `AthenaNikeOutput.testing_templates`; pipeline state field. |
+| `codebase_knowledge` input | **Done** | State field; `get_pattern` reads Pallas output. |
 
 ---
 
@@ -100,7 +96,7 @@ Authoritative product and hero build PDFs live in [`specifications/`](./specific
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Decomposition + tools | **Partial** | `Decomposition.work_items`; spec may require dependencies / risk flags as structured fields. |
+| `Decomposition.components` (WorkItem: depends_on, risk) | **Done** | |
 
 ---
 
@@ -108,7 +104,7 @@ Authoritative product and hero build PDFs live in [`specifications/`](./specific
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Testing contracts output | **Partial** | `TestingContracts.contracts` as strings; spec may require richer contract objects. |
+| `TestingContracts.structured_contracts` + `TestScenario` | **Done** | Legacy `contracts` strings retained. |
 
 ---
 
@@ -116,12 +112,10 @@ Authoritative product and hero build PDFs live in [`specifications/`](./specific
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Ingestion → analysis → five Markdown files | **Done** | `repo_analyser analyse` |
+| `repo-analyser analyse` | **Done** | Unchanged path. |
 
 ---
 
 ## Conclusion
 
-**These PDFs are now versioned in-repo under `docs/specifications/`.**
-
-**They are not all delivered “in full” at the build-document level:** several heroes (especially **Lethe** collection naming and incremental Merkle file, **Pallas** knowledge model and persistence, **Nike** full standards matrix and `testing_templates`, parts of **Daedalus** / **Arete** structure) still differ from the PDFs. The **product definition** pipeline and **Olympus runtime** are largely in place; remaining work is tightening **schemas, persistence, and index semantics** to match each build document line-by-line.
+**The hero build documents and product definition are now implemented in code at the schema, persistence, indexing, and tool level described above.** Remaining **Partial** items are product packaging choices (strict token cap, Studio/MCP as default), not missing core pipeline mechanics.

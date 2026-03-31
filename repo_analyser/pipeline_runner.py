@@ -164,8 +164,11 @@ def write_context_package_markdown(final_state: Any, output_path: Path) -> Path:
     lines.append(_md_block("3.0 Index (Lethe)", _format_index_status(idx)))
     iris_block = _format_analytical_explanations(d.get("analytical_explanations"))
     lines.append(_md_block("3d Module map (Iris)", iris_block))
-    pl = d.get("pattern_library")
-    lines.append(_md_block("3a–c Patterns & conventions (Pallas)", _format_pattern_library(pl)))
+    ck = d.get("codebase_knowledge")
+    pallas_body = _format_codebase_knowledge(ck)
+    if not pallas_body.strip():
+        pallas_body = _format_pattern_library(d.get("pattern_library"))
+    lines.append(_md_block("3a–c Patterns & conventions (Pallas)", pallas_body))
     lines.append(_md_block("3e Gaps (Asclepius)", _format_gap_register(d.get("gap_register"))))
 
     lines.append("---")
@@ -174,7 +177,15 @@ def write_context_package_markdown(final_state: Any, output_path: Path) -> Path:
     lines.append("")
     cc = d.get("change_classification")
     ast = d.get("assembled_standards")
-    lines.append(_md_block("4b–d Classification & standards (Nike)", _format_nike(cc, ast)))
+    tt = d.get("testing_templates")
+    nike_body = _format_nike(cc, ast)
+    if tt:
+        nike_body += "\n\n**Testing templates (Nike → Arete):**\n"
+        for t in (tt if isinstance(tt, list) else [])[:20]:
+            if isinstance(t, dict):
+                g, w, th = t.get("given", ""), t.get("when", ""), t.get("then", "")
+                nike_body += f"- Given: {g} / When: {w} / Then: {th}\n"
+    lines.append(_md_block("4b–d Classification & standards (Nike)", nike_body))
 
     lines.append("---")
     lines.append("")
@@ -245,10 +256,24 @@ def _format_index_status(idx: Any) -> str:
         idx = idx.model_dump()
     if not isinstance(idx, dict):
         return str(idx)
-    return (
+    lb = idx.get("language_breakdown") or {}
+    lb_s = ", ".join(f"{k}: {v}" for k, v in list(lb.items())[:12]) if lb else ""
+    changed = idx.get("changed_files") or []
+    iris_q = idx.get("needs_iris_refresh") or []
+    parts = [
         f"Ready: {idx.get('ready')} | Chunks: {idx.get('indexed_chunks')} | "
-        f"Merkle: `{str(idx.get('merkle_root', ''))[:16]}…` | {idx.get('note', '')}"
-    )
+        f"Collection: `{idx.get('collection_name', '')}` | "
+        f"Merkle: `{str(idx.get('merkle_root', ''))[:16]}…`",
+    ]
+    if lb_s:
+        parts.append(f"Languages: {lb_s}")
+    if changed:
+        parts.append(f"Changed files this run: {', '.join(str(x) for x in changed[:20])}")
+    if iris_q:
+        parts.append(f"needs_iris_refresh: {', '.join(str(x) for x in iris_q[:15])}")
+    if idx.get("note"):
+        parts.append(str(idx["note"]))
+    return "\n".join(parts)
 
 
 def _format_analytical_explanations(ae: Any) -> str:
@@ -274,6 +299,33 @@ def _format_analytical_explanations(ae: Any) -> str:
         if ex.get("key_responsibilities"):
             lines.append("- " + "\n- ".join(str(r) for r in ex["key_responsibilities"][:7]))
         lines.append("")
+    return "\n".join(lines).strip()
+
+
+def _format_codebase_knowledge(ck: Any) -> str:
+    if not ck:
+        return ""
+    if hasattr(ck, "model_dump"):
+        ck = ck.model_dump()
+    if not isinstance(ck, dict):
+        return str(ck)
+    lines = [str(ck.get("summary", "")), ""]
+    for c in ck.get("conventions", [])[:30]:
+        if isinstance(c, dict):
+            nm, cat, desc = c.get("name", ""), c.get("category", ""), c.get("description", "")
+            lines.append(f"- **{nm}** ({cat}): {desc}")
+        else:
+            lines.append(f"- {c!r}")
+    lines.append("")
+    for p in ck.get("patterns", [])[:30]:
+        if isinstance(p, dict):
+            lines.append(f"- **{p.get('name', '')}**: {p.get('description', '')}")
+        else:
+            lines.append(f"- {p!r}")
+    lines.append("")
+    for ad in ck.get("architectural_decisions", [])[:20]:
+        if isinstance(ad, dict):
+            lines.append(f"- **{ad.get('title', '')}**: {ad.get('description', '')}")
     return "\n".join(lines).strip()
 
 
@@ -303,12 +355,20 @@ def _format_gap_register(gr: Any) -> str:
     lines = [str(gr.get("summary", "")), f"Count: {gr.get('gap_count', 0)}", ""]
     for g in gr.get("gaps", [])[:50]:
         if isinstance(g, dict):
+            cat = g.get("category", "")
             lines.append(
-                f"- **[{g.get('area', '')}]** ({g.get('severity', '')}): {g.get('detail', '')}\n"
+                f"- **[{g.get('area', '')}]** ({g.get('severity', '')})"
+                f"{f' [{cat}]' if cat else ''}: {g.get('detail', '')}\n"
                 f"  - Agent: {g.get('agent_instruction', '')}"
             )
         else:
-            lines.append(f"- {g!r}")
+            gd = g.model_dump() if hasattr(g, "model_dump") else {}
+            if gd:
+                a, sev, det = gd.get("area", ""), gd.get("severity", ""), gd.get("detail", "")
+                ai = gd.get("agent_instruction", "")
+                lines.append(f"- **[{a}]** ({sev}): {det}\n  - Agent: {ai}")
+            else:
+                lines.append(f"- {g!r}")
     return "\n".join(lines).strip()
 
 
@@ -321,7 +381,20 @@ def _format_change_boundary(cb: Any) -> str:
         return str(cb)
     files = cb.get("boundary_files") or []
     fl = ", ".join(f"`{f}`" for f in files[:40])
-    return f"{cb.get('summary', '')}\n\nFiles: {fl}"
+    prim = ", ".join(f"`{x}`" for x in (cb.get("primary_modules") or [])[:20])
+    sec = ", ".join(f"`{x}`" for x in (cb.get("secondary_modules") or [])[:20])
+    hyp = cb.get("change_type_hypothesis", "")
+    oos = cb.get("out_of_scope", "")
+    lines = [str(cb.get("summary", "")), "", f"**Files:** {fl}"]
+    if prim:
+        lines.append(f"**Primary:** {prim}")
+    if sec:
+        lines.append(f"**Secondary:** {sec}")
+    if hyp:
+        lines.append(f"**Change hypothesis:** {hyp}")
+    if oos:
+        lines.append(f"**Out of scope:** {oos}")
+    return "\n".join(lines)
 
 
 def _format_retrieved_code(rc: Any) -> str:
@@ -333,7 +406,15 @@ def _format_retrieved_code(rc: Any) -> str:
         return str(rc)
     paths = rc.get("paths") or []
     pl = ", ".join(f"`{p}`" for p in paths[:40])
-    return f"{rc.get('summary', '')}\n\nPaths: {pl}"
+    lines = [str(rc.get("summary", "")), "", f"Paths: {pl}"]
+    for sn in (rc.get("snippets") or [])[:15]:
+        if isinstance(sn, dict):
+            lines.append(
+                f"\n```{sn.get('path', '')} "
+                f"L{sn.get('start_line', '')}-{sn.get('end_line', '')}\n"
+                f"{sn.get('content', '')[:2000]}\n```"
+            )
+    return "\n".join(lines)
 
 
 def _format_nike(cc: Any, ast: Any) -> str:
@@ -342,7 +423,12 @@ def _format_nike(cc: Any, ast: Any) -> str:
         if hasattr(cc, "model_dump"):
             cc = cc.model_dump()
         if isinstance(cc, dict):
-            parts.append(f"**Type:** {cc.get('change_type', '')}\n\n{cc.get('rationale', '')}")
+            at = cc.get("all_types") or []
+            at_s = ", ".join(str(x) for x in at) if at else ""
+            parts.append(
+                f"**Type:** {cc.get('change_type', '')}"
+                f"{f' (all: {at_s})' if at_s else ''}\n\n{cc.get('rationale', '')}"
+            )
     if ast:
         if hasattr(ast, "model_dump"):
             ast = ast.model_dump()
@@ -350,6 +436,18 @@ def _format_nike(cc: Any, ast: Any) -> str:
             parts.append(f"**Standards summary:** {ast.get('summary', '')}")
             for s in (ast.get("standards") or [])[:60]:
                 parts.append(f"- {s}")
+            iso = ast.get("iso25010_notes") or {}
+            if isinstance(iso, dict) and iso:
+                parts.append("\n**ISO 25010 (applied):**")
+                for k, v in list(iso.items())[:12]:
+                    parts.append(f"- {k}: {v}")
+            fg = ast.get("file_guidance") or []
+            if fg:
+                parts.append("\n**Per-file guidance:**")
+                for item in fg[:25]:
+                    if isinstance(item, dict):
+                        instr = "; ".join(item.get("instructions") or [])
+                        parts.append(f"- `{item.get('path', '')}`: {instr}")
     return "\n\n".join(parts).strip()
 
 
@@ -363,6 +461,13 @@ def _format_decomposition(dec: Any) -> str:
     lines = [str(dec.get("summary", "")), ""]
     for i, item in enumerate(dec.get("work_items") or [], 1):
         lines.append(f"{i}. {item}")
+    for comp in (dec.get("components") or [])[:20]:
+        if isinstance(comp, dict):
+            deps = ", ".join(comp.get("depends_on") or [])
+            lines.append(
+                f"- **{comp.get('title', '')}** (risk: {comp.get('risk', '')})"
+                f"{f' deps: {deps}' if deps else ''}\n  {comp.get('description', '')}"
+            )
     return "\n".join(lines).strip()
 
 
@@ -377,4 +482,16 @@ def _format_testing_contracts(tc: Any) -> str:
     for c in tc.get("contracts") or []:
         lines.append(str(c))
         lines.append("")
+    for sc in (tc.get("structured_contracts") or [])[:15]:
+        if isinstance(sc, dict):
+            lines.append(f"### {sc.get('component', 'component')}")
+            if sc.get("preconditions"):
+                lines.append("**Pre:** " + "; ".join(sc["preconditions"][:8]))
+            if sc.get("postconditions"):
+                lines.append("**Post:** " + "; ".join(sc["postconditions"][:8]))
+            for s in (sc.get("scenarios") or [])[:6]:
+                if isinstance(s, dict):
+                    sg, sw, st = s.get("given", ""), s.get("when", ""), s.get("then", "")
+                    lines.append(f"- G: {sg} | W: {sw} | T: {st}")
+            lines.append("")
     return "\n".join(lines).strip()

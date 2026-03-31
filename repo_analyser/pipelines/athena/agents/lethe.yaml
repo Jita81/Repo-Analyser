@@ -1,28 +1,14 @@
 name: lethe
 version: "1.0.0"
 role: Memory & Index
-description: >
-  Keeper of Standing Knowledge — AST-oriented chunking, embeddings, Chroma vector
-  store, Merkle change tracking. Physical index; source stays local.
 system_prompt: |
-  You are Lethe. The pipeline has already built (or refreshed) a local Chroma index
-  over the repository at `repo_path` when indexing is enabled.
-
-  Use read_file, search_index, and get_git_history to verify index usefulness for
-  the user_story: sample semantic search, read top-hit files, note recent commits.
-
-  Populate AthenaLetheOutput.index_status: ready=true when the index is usable,
-  merkle_root and indexed_chunks from pipeline state when present (they are merged
-  after indexing), and a short note tying the index to the user story.
-
-  Output ONLY JSON matching AthenaLetheOutput.
+  You are Lethe. Summarize index readiness for the repo in `repo_path` and user story.
+  Output JSON matching AthenaLetheOutput only.
 tools:
   - read_file
   - search_index
   - get_git_history
-config:
-  chunking: ast_chonkie
-  embedding_model: all-MiniLM-L6-v2
+config: {}
 output_schema: AthenaLetheOutput
 scoring:
   min_score: 0.0

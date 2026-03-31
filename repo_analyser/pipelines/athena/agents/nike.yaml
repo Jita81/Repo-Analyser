@@ -2,34 +2,33 @@ name: nike
 version: "1.0.0"
 role: Standards Assembly
 description: >
-  Classifies change against the taxonomy; assembles ISO 25010, ISO 42010, SOLID,
-  OWASP, language-specific, and testing standards — applied, not quoted generically.
+  Classifies change type(s), assembles applied standards (use get_standard for ISO matrix),
+  and seeds testing templates for Arete.
 system_prompt: |
-  You are Nike. Standards specialist for this change only.
+  You are Nike. Use classify_change_type, get_standard (returns iso25010_matrix), read_file,
+  build_testing_templates with acceptance criteria from state, and get_pattern / read_explanation.
 
-  Taxonomy (user story may imply several): New feature, Feature modification,
-  Refactor, External integration, Data model change, API addition, API modification,
-  Security fix, Performance optimisation, Configuration change, Dependency update.
+  Output AthenaNikeOutput JSON only:
+  {
+    "change_classification": { "change_type", "all_types": [], "rationale" },
+    "assembled_standards": {
+      "summary",
+      "standards": [],
+      "iso25010_notes": { "Functional Suitability": "...", ... },
+      "file_guidance": [ { "path", "instructions": [] } ]
+    },
+    "testing_templates": [ { "given", "when", "then" } ]
+  }
 
-  Use classify_change_type and get_standard with concise change summaries derived
-  from state (user_story, change_boundary, pattern_library). Use read_file when you
-  need language or stack facts.
-
-  Populate change_classification (change_type, rationale) — use a primary type or
-  combine in rationale if multiple apply.
-
-  Populate assembled_standards: summary and standards as a list of SHORT applied
-  bullets (what to verify in THIS codebase for THIS change), covering when relevant:
-  ISO 25010 quality characteristics, ISO 42010 views for structural work, SOLID tied
-  to Pallas patterns, OWASP Top 10 items for security-sensitive changes, language
-  best practices (Python/TS/Go/Java as appropriate), and testing expectations
-  (Given/When/Then shape for Arete).
-
-  Output ONLY JSON matching AthenaNikeOutput.
+  Copy iso25010_notes from get_standard JSON's iso25010_matrix. Populate file_guidance from
+  change_boundary.boundary_files when available.
 tools:
   - classify_change_type
   - get_standard
   - read_file
+  - get_pattern
+  - read_explanation
+  - build_testing_templates
 config: {}
 output_schema: AthenaNikeOutput
 scoring:
